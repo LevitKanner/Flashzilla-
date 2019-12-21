@@ -25,15 +25,17 @@ struct ContentView: View {
             
             VStack {
                 HStack{
-                Text("Time remaining: \(self.timeRemaining)")
-                    .font(.subheadline)
-                    .foregroundColor(.white)
-                    .padding(.horizontal , 20)
-                    .padding(.vertical)
-                    .background(Color.black.opacity(0.7))
-                    .clipShape(Capsule())
+                    Text("Time remaining: \(self.timeRemaining)")
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal , 20)
+                        .padding(.vertical)
+                        .background(Color.black.opacity(0.7))
+                        .clipShape(Capsule())
                     Spacer()
                 }
+                
+                ///Creates a stack of cards
                 ZStack {
                     ForEach(0..<cards.count, id: \.self) { index in
                         CardView_(card: self.cards[index], removal:{
@@ -45,6 +47,22 @@ struct ContentView: View {
                     }
                 }
                 .padding(.top , 25)
+                    ///Disables interactivity when the time remaining is 0
+                    .allowsHitTesting(self.timeRemaining > 0)
+                
+                ///Displays a button to reset the game when all cards are finished
+                if cards.isEmpty {
+                    Button(action: {
+                        self.resetCards()
+                    }){
+                        Text("Start Again")
+                    }
+                    .padding()
+                    .foregroundColor(.white)
+                    .background(Color.blue)
+                    .clipShape(Capsule())
+                    .shadow(radius: 3)
+                }
             }
             ///Appears when the differentiateWithoutColor accessibility is enabled in settings
             if differentiateWithoutColor {
@@ -71,7 +89,7 @@ struct ContentView: View {
             }
         }
         .onReceive(self.timer) { (time) in
-            ///Counts down only when the application is active 
+            ///Counts down only when the application is active
             guard self.AppActive else {return}
             
             if self.timeRemaining > 0 {
@@ -79,19 +97,33 @@ struct ContentView: View {
             }
         }
             ///Detects when the application is entering the background
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { (_) in
-            ///Update the active state of the application
-            self.AppActive = false
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { (_) in
+                ///Update the active state of the application
+                self.AppActive = false
         }
             
             ///Detects when the applicaton is being opened again
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { (_) in
-            self.AppActive = true
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { (_) in
+                ///Brings the application back to active only if the cards array is not empty
+                if !self.cards.isEmpty{
+                    self.AppActive = true
+                }
         }
     }
     
     func removeCard(at index: Int){
         self.cards.remove(at: index)
+        if cards.isEmpty {
+            self.AppActive = false
+        }
+    }
+    
+    func resetCards(){
+        withAnimation(Animation.interactiveSpring()) {
+            self.timeRemaining = 100
+            self.cards = [Card](repeating: Card.example, count: 10)
+            self.AppActive = true
+        }
     }
 }
 
