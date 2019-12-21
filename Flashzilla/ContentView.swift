@@ -11,6 +11,10 @@ import CoreHaptics
 
 struct ContentView: View {
     @State private var cards = [Card](repeating: Card.example, count: 10)
+    @Environment(\.accessibilityDifferentiateWithoutColor) var differentiateWithoutColor
+    @State var timeRemaining = 100
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @State private var AppActive = true
     
     var body: some View {
         ZStack {
@@ -20,10 +24,16 @@ struct ContentView: View {
                 .edgesIgnoringSafeArea(.all)
             
             VStack {
-                Text("dfasfd")
-                .font(.largeTitle)
-                Spacer()
-                
+                HStack{
+                Text("Time remaining: \(self.timeRemaining)")
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal , 20)
+                    .padding(.vertical)
+                    .background(Color.black.opacity(0.7))
+                    .clipShape(Capsule())
+                    Spacer()
+                }
                 ZStack {
                     ForEach(0..<cards.count, id: \.self) { index in
                         CardView_(card: self.cards[index], removal:{
@@ -34,7 +44,49 @@ struct ContentView: View {
                             .stacked(at: index, in: self.cards.count)
                     }
                 }
+                .padding(.top , 25)
             }
+            ///Appears when the differentiateWithoutColor accessibility is enabled in settings
+            if differentiateWithoutColor {
+                VStack{
+                    Spacer()
+                    
+                    HStack{
+                        Image(systemName: "xmark.circle")
+                            .padding()
+                            .background(Color.black.opacity(0.7))
+                            .clipShape(Circle())
+                        
+                        Spacer()
+                        
+                        Image(systemName: "checkmark.circle")
+                            .padding()
+                            .background(Color.black.opacity(0.7))
+                            .clipShape(Circle())
+                    }
+                    .foregroundColor(.white)
+                    .font(.largeTitle)
+                    .padding()
+                }
+            }
+        }
+        .onReceive(self.timer) { (time) in
+            ///Counts down only when the application is active 
+            guard self.AppActive else {return}
+            
+            if self.timeRemaining > 0 {
+                self.timeRemaining -= 1
+            }
+        }
+            ///Detects when the application is entering the background
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { (_) in
+            ///Update the active state of the application
+            self.AppActive = false
+        }
+            
+            ///Detects when the applicaton is being opened again
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { (_) in
+            self.AppActive = true
         }
     }
     
