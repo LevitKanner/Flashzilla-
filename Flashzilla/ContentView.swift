@@ -11,12 +11,13 @@ import CoreHaptics
 
 struct ContentView: View {
     ///Properties
-    @State private var cards = [Card](repeating: Card.example, count: 10)
+    @State private var cards = [Card]()
     @Environment(\.accessibilityDifferentiateWithoutColor) var differentiateWithoutColor
     
     @State var timeRemaining = 100
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     @State private var AppActive = true
+    @State private var showingEditView = false
     
     ///Body 
     var body: some View {
@@ -72,6 +73,24 @@ struct ContentView: View {
                 }
             }
             
+            ///Adds a plus button that presents an Edit view 
+            VStack{
+                HStack{
+                    Spacer()
+                    Button(action: {
+                        self.showingEditView = true
+                    }){
+                        Image(systemName: "plus.circle")
+                        .padding()
+                        .background(Color.black.opacity(0.7))
+                        .clipShape(Circle())
+                    }
+                }
+                Spacer()
+            }
+            .foregroundColor(.white)
+            .font(.largeTitle)
+            .padding()
             
             ///Appears when the differentiateWithoutColor accessibility is enabled in settings
             if differentiateWithoutColor {
@@ -141,6 +160,13 @@ struct ContentView: View {
                     self.AppActive = true
                 }
         }
+        .sheet(isPresented: $showingEditView , onDismiss: self.resetCards) {
+            EditCardView()
+        }
+        .onAppear(){
+            self.resetCards()
+        }
+        
     }
     
     ///Method for the removal of card from the cards array
@@ -156,8 +182,16 @@ struct ContentView: View {
     func resetCards(){
         withAnimation(Animation.spring()) {
             self.timeRemaining = 100
-            self.cards = [Card](repeating: Card.example, count: 10)
             self.AppActive = true
+            loadData()
+        }
+    }
+    
+    func loadData() {
+        if let data = UserDefaults.standard.data(forKey: "Cards") {
+            if let decoded = try? JSONDecoder().decode([Card].self, from: data) {
+                self.cards = decoded
+            }
         }
     }
 }
