@@ -15,16 +15,21 @@ struct CardView_: View {
     @State var offset: CGSize = .zero
     var removal: (() -> Void)? = nil
     
+    var feedback = UINotificationFeedbackGenerator()
     
     var body: some View {
         ///Creates a drag gesture
         let gesture = DragGesture()
             .onChanged { (value) in
                 self.offset = value.translation
+                self.feedback.prepare()
         }
         .onEnded { (_) in
             if abs(self.offset.width) > 100{
                 //Remove card
+                if self.offset.width < 0 {
+                    self.feedback.notificationOccurred(.error)
+                }
                 self.removal?()
             }else{
                 self.offset = .zero
