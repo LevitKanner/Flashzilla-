@@ -10,6 +10,7 @@ import SwiftUI
 
 struct CardView_: View {
     @Environment(\.accessibilityDifferentiateWithoutColor) var differentiateWithoutColor
+    @Environment(\.accessibilityEnabled) var accessibilityEnabled
     let card: Card
     @State var showingAnswer = false
     @State var offset: CGSize = .zero
@@ -59,14 +60,19 @@ struct CardView_: View {
                 
                 
                 VStack{
-                    Text(card.prompt)
-                        .font(.custom("AvenirNext-DemiBold", size: 30))
-                    
-                    ///Shows the answer when the card is tapped
-                    if showingAnswer{
-                        Text(card.answer)
-                            .font(.custom("Avenir-MediumOblique", size: 25))
-                            .foregroundColor(.secondary)
+                    if self.accessibilityEnabled{
+                        Text(showingAnswer ? card.prompt : card.answer)
+                            .font(.custom("AvenirNext-DemiBold", size: 30))
+                    }else{
+                        Text(card.prompt)
+                            .font(.custom("AvenirNext-DemiBold", size: 30))
+                        
+                        ///Shows the answer when the card is tapped
+                        if showingAnswer{
+                            Text(card.answer)
+                                .font(.custom("Avenir-MediumOblique", size: 25))
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 .padding()
@@ -76,7 +82,9 @@ struct CardView_: View {
             .rotationEffect(Angle(degrees: Double(self.offset.width / 5)))
             .offset(x: offset.width * 5 , y: 0 )
             .opacity(2 - Double(abs(offset.width / 50)))
+            .accessibility(addTraits: .isButton)
             .gesture(gesture)
+            .animation(.spring())
             .onTapGesture {
                 withAnimation {
                     self.showingAnswer.toggle()
