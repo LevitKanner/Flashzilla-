@@ -10,15 +10,18 @@ import SwiftUI
 import CoreHaptics
 
 struct ContentView: View {
+    ///Properties
     @State private var cards = [Card](repeating: Card.example, count: 10)
     @Environment(\.accessibilityDifferentiateWithoutColor) var differentiateWithoutColor
+    
     @State var timeRemaining = 100
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     @State private var AppActive = true
     
+    ///Body 
     var body: some View {
         ZStack {
-            Image("background")
+            Image(decorative: "background")
                 .resizable()
                 .scaledToFill()
                 .edgesIgnoringSafeArea(.all)
@@ -44,6 +47,10 @@ struct ContentView: View {
                             }
                         })
                             .stacked(at: index, in: self.cards.count)
+                            ///Disables interactivity on cards behind the top card
+                            .allowsHitTesting(index == self.cards.count - 1)
+                            ///Hides card behind the top card from being read by voice Ove. 
+                            .accessibility(hidden: index < self.cards.count - 1)
                     }
                 }
                 .padding(.top , 25)
@@ -64,23 +71,48 @@ struct ContentView: View {
                     .shadow(radius: 3)
                 }
             }
+            
+            
             ///Appears when the differentiateWithoutColor accessibility is enabled in settings
             if differentiateWithoutColor {
                 VStack{
+                    
                     Spacer()
                     
+                    ///Places a horizontal stack of buttons on the screen
                     HStack{
-                        Image(systemName: "xmark.circle")
-                            .padding()
-                            .background(Color.black.opacity(0.7))
-                            .clipShape(Circle())
                         
+                        ///First Button
+                        Button(action:{
+                            withAnimation {
+                                self.removeCard(at: self.cards.count - 1)
+                            }
+                        }){
+                            Image(systemName: "xmark.circle")
+                                .padding()
+                                .background(Color.black.opacity(0.7))
+                                .clipShape(Circle())
+                        }
+                        .accessibility(label: Text("Wrong"))
+                        .accessibility(hint: Text("Marks choice as wrong"))
+                        
+                        ///Spacer
                         Spacer()
                         
-                        Image(systemName: "checkmark.circle")
-                            .padding()
-                            .background(Color.black.opacity(0.7))
-                            .clipShape(Circle())
+                        ///Second button
+                        Button(action:{
+                            withAnimation {
+                                self.removeCard(at: self.cards.count - 1)
+                            }
+                        }){
+                            Image(systemName: "checkmark.circle")
+                                .padding()
+                                .background(Color.black.opacity(0.7))
+                                .clipShape(Circle())
+                        }
+                        .accessibility(label: Text("Correct"))
+                        .accessibility(hint: Text("Marks choice as being correct"))
+                        
                     }
                     .foregroundColor(.white)
                     .font(.largeTitle)
@@ -111,15 +143,18 @@ struct ContentView: View {
         }
     }
     
+    ///Method for the removal of card from the cards array
     func removeCard(at index: Int){
+        guard index >= 0 else {return}
         self.cards.remove(at: index)
         if cards.isEmpty {
             self.AppActive = false
         }
     }
     
+    ///Method for the reseting of games 
     func resetCards(){
-        withAnimation(Animation.interactiveSpring()) {
+        withAnimation(Animation.spring()) {
             self.timeRemaining = 100
             self.cards = [Card](repeating: Card.example, count: 10)
             self.AppActive = true
