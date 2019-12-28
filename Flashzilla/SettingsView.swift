@@ -20,10 +20,32 @@ struct SettingsView: View {
                     Text("Replay Cards")
                 }
             }
+            .onAppear{
+                self.loadState()
+            }
         .navigationBarTitle("Settings")
-            .navigationBarItems(trailing: Button("Done"){self.presentationMode.wrappedValue.dismiss()})
+            .navigationBarItems(trailing: Button("Done"){
+                self.saveSetting()
+                self.presentationMode.wrappedValue.dismiss()
+                
+            })
         }
     .navigationViewStyle(StackNavigationViewStyle())
+    }
+    
+    
+    //Saves game settings to userDefaults
+    func saveSetting(){
+        if let gameState = try? JSONEncoder().encode(self.addWrongCards){
+             UserDefaults.standard.set(gameState, forKey: "GameState")
+        }
+    }
+    
+    func loadState(){
+        if let gameState = UserDefaults.standard.data(forKey: "GameState"){
+            let decodedState = try? JSONDecoder().decode(Bool.self, from: gameState)
+            self.addWrongCards = decodedState ?? false
+        }
     }
 }
 
