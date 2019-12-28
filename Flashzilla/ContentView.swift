@@ -18,6 +18,10 @@ struct ContentView: View {
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     @State private var AppActive = true
     @State private var showingEditView = false
+    @State private var showingSettingsView = false
+    //Adds core Haptic engine
+    @State private var engine: CHHapticEngine?
+    @State var replayWrongCards = false
     
     ///Body 
     var body: some View {
@@ -53,37 +57,73 @@ struct ContentView: View {
                             ///Hides card behind the top card from being read by voice Ove. 
                             .accessibility(hidden: index < self.cards.count - 1)
                     }
-                }
-                .padding(.top , 25)
                     ///Disables interactivity when the time remaining is 0
                     .allowsHitTesting(self.timeRemaining > 0)
-                
-                ///Displays a button to reset the game when all cards are finished
-                if cards.isEmpty {
-                    Button(action: {
-                        self.resetCards()
-                    }){
-                        Text("Start Again")
+                    
+                    
+                    ///Displays a button to reset the game when all cards are finished
+                    if cards.isEmpty || timeRemaining == 0 {
+                        Button(action: {
+                            self.resetCards()
+                        }){
+                            Text("Start Again")
+                        }
+                        .padding()
+                        .foregroundColor(.white)
+                        .background(Color.blue)
+                        .clipShape(Capsule())
+                        .shadow(radius: 3)
                     }
-                    .padding()
-                    .foregroundColor(.white)
-                    .background(Color.blue)
-                    .clipShape(Capsule())
-                    .shadow(radius: 3)
                 }
+                .padding(.top , 25)
+                    
+                
+                
             }
             
             ///Adds a plus button that presents an Edit view 
             VStack{
                 HStack{
                     Spacer()
-                    Button(action: {
-                        self.showingEditView = true
-                    }){
-                        Image(systemName: "plus.circle")
-                        .padding()
-                        .background(Color.black.opacity(0.7))
-                        .clipShape(Circle())
+                    VStack(alignment: .center){
+                        Button(action:{
+                            self.showingSettingsView = true
+                        }){
+                            Image(systemName: "gear")
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Color.black.opacity(0.7))
+                                .clipShape(Circle())
+                        }
+                        
+                        Text("Settings")
+                            .foregroundColor(.black)
+                            .bold()
+                            .font(.custom("AvenirNext", size: 10))
+                    }
+                    .sheet(isPresented: $showingSettingsView, content: {
+                        SettingsView(addWrongCards: self.$replayWrongCards)
+                    })
+                    
+                    
+                    
+                    VStack(alignment: .center){
+                        Button(action: {
+                            self.showingEditView = true
+                        }){
+                            Image(systemName: "plus.circle")
+                                .padding()
+                                .background(Color.black.opacity(0.7))
+                                .clipShape(Circle())
+                        }
+                        
+                        Text("Card")
+                            .foregroundColor(.black)
+                            .bold()
+                            .font(.custom("AvenirNext", size: 10))
+                    }
+                    .sheet(isPresented: $showingEditView , onDismiss: self.resetCards) {
+                        EditCardView()
                     }
                 }
                 Spacer()
@@ -101,7 +141,7 @@ struct ContentView: View {
                     ///Places a horizontal stack of buttons on the screen
                     HStack{
                         
-                        ///First Button
+                        ///First Button to mark wrong answer
                         Button(action:{
                             withAnimation {
                                 self.removeCard(at: self.cards.count - 1)
@@ -118,7 +158,7 @@ struct ContentView: View {
                         ///Spacer
                         Spacer()
                         
-                        ///Second button
+                        ///Second button to make right answer
                         Button(action:{
                             withAnimation {
                                 self.removeCard(at: self.cards.count - 1)
@@ -139,12 +179,17 @@ struct ContentView: View {
                 }
             }
         }
+            
+            
         .onReceive(self.timer) { (time) in
             ///Counts down only when the application is active
             guard self.AppActive else {return}
             
             if self.timeRemaining > 0 {
                 self.timeRemaining -= 1
+            }else{
+                ///Plays haptic sound if timer runs out
+                self.complexSuccess()
             }
         }
             ///Detects when the application is entering the background
@@ -160,14 +205,59 @@ struct ContentView: View {
                     self.AppActive = true
                 }
         }
-        .sheet(isPresented: $showingEditView , onDismiss: self.resetCards) {
-            EditCardView()
-        }
+            
+            
         .onAppear(){
             self.resetCards()
+            self.prepareEngine()
         }
         
+        
     }
+    
+    
+    ///Method to warm up haptic engine
+    func prepareEngine(){
+        ///Checks if device supports haptic technology
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else {
+            print("Haptics not supported by device")
+            return
+        }
+        ///Creates an instance of haptic engine and starts it
+        do {
+            engine = try CHHapticEngine()
+            try engine?.start()
+        }catch{
+            debugPrint("An error occurred while creating engine \(error.localizedDescription)")
+        }
+    }
+    
+    
+    
+    func complexSuccess(){
+        ///Makes sure device supports haptics
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else {return}
+        var events = [CHHapticEvent]()
+        
+        ///Creates parameters to create a haptic Event
+        let intensity = CHHapticEventParameter(parameterID: .hapticIntensity, value: 1)
+        let sharpness = CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.5)
+        
+        let event = CHHapticEvent(eventType: .hapticTransient, parameters: [intensity , sharpness], relativeTime: 1)
+        
+        events.append(event)
+        
+        ///Create a pattern with the event instance and a haptic player to play the pattern created with the events
+        do {
+            let pattern = try CHHapticPattern(events: events, parameterCurves: [])
+            let player = try engine?.makePlayer(with: pattern)
+            try player?.start(atTime: 0)
+        }catch{
+            debugPrint("An error occurred whiles creating haptic pattern \(error.localizedDescription)")
+        }
+    }
+    
+    
     
     ///Method for the removal of card from the cards array
     func removeCard(at index: Int){
@@ -194,6 +284,7 @@ struct ContentView: View {
             }
         }
     }
+    
 }
 
 
